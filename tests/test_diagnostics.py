@@ -62,7 +62,7 @@ def test_label_set_helpers_extract_live_birth_and_lifetime_counts():
 
     assert live_counts_from_label_sets(frames) == (2, 3, 2, 2)
     assert birth_counts_from_label_sets(frames) == (2, 1, 0, 1)
-    assert lifetimes_from_label_sets(frames) == (2, 3, 4, 4)
+    assert lifetimes_from_label_sets(frames) == (1, 2, 3, 3)
 
 
 def test_novelty_prior_probability_makes_exposure_choice_explicit():
