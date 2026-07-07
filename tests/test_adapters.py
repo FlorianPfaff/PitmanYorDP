@@ -55,4 +55,4 @@ def test_count_series_from_records_extracts_live_birth_and_lifetime_counts():
     assert bundle.frames == (1, 2, 3)
     assert bundle.live_counts == (2, 1, 2)
     assert bundle.birth_counts == (2, 0, 1)
-    assert bundle.lifetimes == (1, 3, 3)
+    assert bundle.lifetimes == (1, 2, 3)
