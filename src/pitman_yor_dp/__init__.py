@@ -42,6 +42,11 @@ from .model_selection import (
     fit_negative_binomial_count_model,
     fit_poisson_count_model,
 )
+from .motchallenge import (
+    count_series_from_motchallenge_file,
+    records_from_motchallenge_file,
+    records_from_motchallenge_rows,
+)
 from .synthetic import (
     SyntheticTrackingConfig,
     simulate_count_series,
@@ -65,6 +70,7 @@ __all__ = [
     "comparison_to_dict",
     "comparisons_to_dicts",
     "count_series_diagnostics",
+    "count_series_from_motchallenge_file",
     "count_series_from_records",
     "empirical_pmf",
     "fit_negative_binomial_count_model",
@@ -78,6 +84,8 @@ __all__ = [
     "novelty_prior_probability",
     "phase_transition_table",
     "records_from_csv",
+    "records_from_motchallenge_file",
+    "records_from_motchallenge_rows",
     "records_from_rows",
     "simulate_count_series",
     "simulate_track_records",
