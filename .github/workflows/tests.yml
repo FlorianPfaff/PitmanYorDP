@@ -33,3 +33,12 @@ jobs:
           path: pytest-${{ matrix.python-version }}.log
       - name: Run synthetic example smoke test
         run: python examples/synthetic_gating_experiment.py > /tmp/synthetic_gating.json
+      - name: Run MOTChallenge example smoke test
+        run: |
+          cat > /tmp/mot_gt.txt <<'EOF'
+          1,1,0,0,10,10,1,-1,-1,-1
+          1,2,0,0,10,10,1,-1,-1,-1
+          2,1,0,0,10,10,1,-1,-1,-1
+          4,3,0,0,10,10,1,-1,-1,-1
+          EOF
+          python examples/count_diagnostics_from_motchallenge.py /tmp/mot_gt.txt --dataset smoke > /tmp/mot_counts.json
