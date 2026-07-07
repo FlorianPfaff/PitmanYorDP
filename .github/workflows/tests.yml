@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Run tests
+        run: |
+          set +e
+          pytest -q --tb=short 2>&1 | tee pytest-${{ matrix.python-version }}.log
+          status=${PIPESTATUS[0]}
+          echo "pytest_exit_status=${status}" >> "$GITHUB_ENV"
+          exit ${status}
+      - name: Upload pytest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-log-${{ matrix.python-version }}
+          path: pytest-${{ matrix.python-version }}.log
+      - name: Run synthetic example smoke test
+        run: python examples/synthetic_gating_experiment.py > /tmp/synthetic_gating.json
+      - name: Run MOTChallenge example smoke test
+        run: |
+          cat > /tmp/mot_gt.txt <<'EOF'
+          1,1,0,0,10,10,1,-1,-1,-1
+          1,2,0,0,10,10,1,-1,-1,-1
+          2,1,0,0,10,10,1,-1,-1,-1
+          4,3,0,0,10,10,1,-1,-1,-1
+          EOF
+          python examples/count_diagnostics_from_motchallenge.py /tmp/mot_gt.txt --dataset smoke > /tmp/mot_counts.json
