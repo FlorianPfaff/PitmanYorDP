@@ -18,7 +18,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
-from .adapters import TrackRecord, count_series_from_records
+from .adapters import CountSeriesBundle, TrackRecord, count_series_from_records
 
 
 def records_from_motchallenge_file(
@@ -95,7 +95,7 @@ def count_series_from_motchallenge_file(
     min_confidence: float | None = None,
     ignored_track_ids: Sequence[int | str] = (-1,),
     include_empty_frames: bool = True,
-) -> object:
+) -> CountSeriesBundle:
     """Read a MOTChallenge-style file and return a count-series bundle."""
 
     records = records_from_motchallenge_file(
