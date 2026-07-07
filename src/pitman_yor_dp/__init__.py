@@ -42,6 +42,11 @@ from .model_selection import (
     fit_negative_binomial_count_model,
     fit_poisson_count_model,
 )
+from .synthetic import (
+    SyntheticTrackingConfig,
+    simulate_count_series,
+    simulate_track_records,
+)
 
 __all__ = [
     "CountModelComparison",
@@ -52,6 +57,7 @@ __all__ = [
     "LogLogSurvivalFit",
     "NoveltyClutterOdds",
     "PitmanYorCardinalityPrior",
+    "SyntheticTrackingConfig",
     "TailIndexEstimate",
     "TrackRecord",
     "birth_counts_from_label_sets",
@@ -73,6 +79,8 @@ __all__ = [
     "phase_transition_table",
     "records_from_csv",
     "records_from_rows",
+    "simulate_count_series",
+    "simulate_track_records",
     "survival_function",
     "validate_cluster_sizes",
     "validate_nonnegative_int",
