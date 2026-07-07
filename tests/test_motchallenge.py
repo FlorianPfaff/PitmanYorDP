@@ -38,4 +38,4 @@ def test_count_series_from_motchallenge_file(tmp_path: Path):
     assert bundle.frames == (1, 2, 3, 4)
     assert bundle.live_counts == (2, 1, 0, 1)
     assert bundle.birth_counts == (2, 0, 0, 1)
-    assert bundle.lifetimes == (1, 2, 2)
+    assert bundle.lifetimes == (1, 1, 2)
