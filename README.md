@@ -8,11 +8,12 @@ The goal is to keep reusable implementation code here, while notes, figures, and
 
 This repository provides a small installable Python package, `pitman_yor_dp`, for diagnostics and prior-predictive work around tracking counts. It is deliberately not a full multitarget tracker. The intended use is to decide which count in the tracking generative model plausibly needs a heavy-tailed prior before embedding the resulting prior terms in a tracker-specific likelihood, survival, birth, missed-detection, and clutter model.
 
-The current code separates six concerns:
+The current code separates seven concerns:
 
 - `cardinality.py`: Dirichlet-process and Pitman--Yor Chinese-restaurant prior calculations for target-generated cluster counts.
 - `diagnostics.py`: empirical diagnostics for live counts, birth counts, track lifetimes, survival curves, overdispersion, and exploratory tail-index estimates.
 - `adapters.py`: generic conversion from frame-level track tables to `N_t`, `B_t`, and `L_k` count series.
+- `motchallenge.py`: MOTChallenge-style text-file conversion to the generic count-series schema.
 - `model_selection.py`: Poisson versus negative-binomial screening and heuristic prior-family recommendations.
 - `clutter.py`: explicit new-target-versus-clutter odds diagnostics for the singleton-track confound.
 - `synthetic.py`: synthetic frame-level label generation for exercising the gating workflow without a benchmark file.
@@ -97,6 +98,28 @@ python examples/count_diagnostics_from_tracks.py path/to/tracks.csv
 ```
 
 The script emits JSON containing live counts, birth counts, lifetimes, Poisson/negative-binomial fits, and a first-pass prior-family recommendation. Use benchmark-specific scripts only to convert annotations into this minimal table schema.
+
+## Example: MOTChallenge count diagnostics
+
+For a MOTChallenge-style file such as `gt/gt.txt` with rows
+
+```text
+frame,id,bb_left,bb_top,bb_width,bb_height,conf,x,y,z
+```
+
+run:
+
+```bash
+python examples/count_diagnostics_from_motchallenge.py path/to/gt.txt --dataset MOT17-02 > mot_counts.json
+```
+
+Then render it into the paper repo with:
+
+```bash
+python ../2026-07-PitmanYorDP-Paper/scripts/render_count_diagnostic_tables.py empirical mot_counts.json \
+  --dataset MOT17-02 \
+  --output ../2026-07-PitmanYorDP-Paper/paper/tables/empirical_count_diagnostics_template.tex
+```
 
 ## Example: synthetic gating smoke test
 
