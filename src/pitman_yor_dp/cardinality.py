@@ -29,8 +29,8 @@ class PitmanYorCardinalityPrior:
         ``discount == 0``, this means ``strength > 0``.
     discount:
         Pitman--Yor discount parameter ``d`` with ``0 <= d < 1``. Positive
-        values induce heavier-tailed cluster-count priors than the Dirichlet
-        process.
+        values change block-size frequencies and give power-law cluster growth
+        with exposure. They do not imply heavy-tailed per-frame birth counts.
 
     Notes
     -----

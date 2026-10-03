@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterable, Sequence
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ def records_from_motchallenge_file(
     min_confidence: float | None = None,
     ignored_track_ids: Sequence[int | str] = (-1,),
     delimiter: str = ",",
+    mot17_ground_truth: bool = False,
 ) -> tuple[TrackRecord, ...]:
     """Read a MOTChallenge-style file into :class:`TrackRecord` objects.
 
@@ -42,6 +44,9 @@ def records_from_motchallenge_file(
         detections without persistent identity.
     delimiter:
         Field delimiter. MOTChallenge uses commas.
+    mot17_ground_truth:
+        Interpret mark/class/visibility columns and retain marked pedestrians
+        at all visibility levels. Does not implement detector matching rules.
     """
 
     with Path(path).open(newline="") as handle:
@@ -50,6 +55,7 @@ def records_from_motchallenge_file(
             reader,
             min_confidence=min_confidence,
             ignored_track_ids=ignored_track_ids,
+            mot17_ground_truth=mot17_ground_truth,
         )
 
 
@@ -58,6 +64,7 @@ def records_from_motchallenge_rows(
     *,
     min_confidence: float | None = None,
     ignored_track_ids: Sequence[int | str] = (-1,),
+    mot17_ground_truth: bool = False,
 ) -> tuple[TrackRecord, ...]:
     """Convert MOTChallenge-style rows to :class:`TrackRecord` objects."""
 
@@ -74,6 +81,14 @@ def records_from_motchallenge_rows(
             continue
 
         confidence = _optional_float(row[6]) if len(row) > 6 else None
+        if mot17_ground_truth:
+            if len(row) < 9:
+                raise ValueError(f"MOT17 ground-truth row {line_number} needs mark, class, and visibility.")
+            class_id = _mot_int(str(row[7]), "class", line_number)
+            if confidence not in (0.0, 1.0):
+                raise ValueError(f"MOT17 ground-truth row {line_number} has invalid mark.")
+            if confidence == 0.0 or class_id != 1:
+                continue
         if min_confidence is not None:
             if confidence is None or confidence < float(min_confidence):
                 continue
@@ -83,7 +98,8 @@ def records_from_motchallenge_rows(
                 frame=_mot_int(raw_frame, "frame", line_number),
                 track_id=_mot_track_id(raw_track_id),
                 confidence=confidence,
-                metadata=_mot_metadata(row),
+                is_ground_truth=True if mot17_ground_truth else None,
+                metadata=_mot_metadata(row, mot17_ground_truth=mot17_ground_truth),
             )
         )
     return tuple(records)
@@ -108,8 +124,11 @@ def count_series_from_motchallenge_file(
 
 def _mot_int(value: str, name: str, line_number: int) -> int:
     try:
-        return int(float(value))
-    except ValueError as exc:
+        number = float(value)
+        if not isfinite(number) or not number.is_integer():
+            raise ValueError
+        return int(number)
+    except (ValueError, OverflowError) as exc:
         raise ValueError(f"MOTChallenge row {line_number} has invalid {name}: {value!r}.") from exc
 
 
@@ -133,10 +152,11 @@ def _optional_float(value: Any) -> float | None:
     return float(text)
 
 
-def _mot_metadata(row: Sequence[Any]) -> dict[str, float | int | None]:
+def _mot_metadata(row: Sequence[Any], *, mot17_ground_truth: bool = False) -> dict[str, float | int | None]:
     metadata: dict[str, float | int | None] = {}
-    keys = ("bb_left", "bb_top", "bb_width", "bb_height", "world_x", "world_y", "world_z")
-    positions = (2, 3, 4, 5, 7, 8, 9)
+    keys = ("bb_left", "bb_top", "bb_width", "bb_height", "class_id", "visibility") if mot17_ground_truth else (
+        "bb_left", "bb_top", "bb_width", "bb_height", "world_x", "world_y", "world_z")
+    positions = (2, 3, 4, 5, 7, 8) if mot17_ground_truth else (2, 3, 4, 5, 7, 8, 9)
     for key, position in zip(keys, positions):
         if len(row) > position:
             metadata[key] = _optional_float(row[position])

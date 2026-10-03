@@ -15,7 +15,6 @@ from typing import Any
 
 from .diagnostics import (
     birth_counts_from_label_sets,
-    lifetimes_from_label_sets,
     live_counts_from_label_sets,
 )
 
@@ -188,12 +187,16 @@ def count_series_from_records(
     )
     frames = tuple(frame for frame, _ in grouped)
     label_sets = tuple(labels for _, labels in grouped)
+    observed: dict[Hashable, list[int]] = {}
+    for frame, labels in grouped:
+        for label in labels:
+            observed.setdefault(label, []).append(frame)
     return CountSeriesBundle(
         frames=frames,
         label_sets=label_sets,
         live_counts=live_counts_from_label_sets(label_sets),
         birth_counts=birth_counts_from_label_sets(label_sets),
-        lifetimes=lifetimes_from_label_sets(label_sets),
+        lifetimes=tuple(sorted(times[-1] - times[0] + 1 for times in observed.values())),
     )
 
 

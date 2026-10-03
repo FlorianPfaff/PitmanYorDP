@@ -55,7 +55,8 @@ def test_synthetic_counts_feed_model_selection():
 
     assert comparison.count_name == "synthetic_births"
     assert comparison.diagnostics.num_samples == 50
-    assert comparison.best_fit is not None
+    assert comparison.best_fit is None  # The NB moments fit is not eligible for AIC ranking.
+    assert comparison.recommended_family == "gamma_poisson_or_negative_binomial"
 
 
 def test_synthetic_config_validation():
