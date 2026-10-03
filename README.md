@@ -150,6 +150,56 @@ python examples/synthetic_gating_experiment.py
 
 This is useful for CI and for checking that the paper's first-stage diagnostic workflow is executable before a real benchmark adapter is added.
 
+## Exact association feasibility study
+
+The finite-window inference API models latent clutter and detected identities,
+not all live targets. It supports one to four frames and at most nine total
+observations; larger inputs fail explicitly. Measurements are grouped by frame,
+in two spatial dimensions. Survival is per acquisition step, while motion uses
+the supplied time differences.
+
+```python
+from pitman_yor_dp import AssociationModel, ObservationWindow, infer_associations
+
+observations = ObservationWindow(
+    frame_times=(0.0, 1.0, 2.0),
+    measurements=(((0.0, 0.0),), ((0.2, 0.1),), ((0.5, 0.1),)),
+)
+posterior = infer_associations(observations, AssociationModel(discount=0.4))
+print(posterior.count_probabilities, posterior.log_evidence)
+```
+
+The survival model uses a normalized birth/death/detection-pattern law. Its
+PYP-inspired discount extension preserves the entire count law conditional on
+each candidate target subset. At zero discount it is exactly the survival
+baseline; with at most two frames the discount cancels even with latent clutter.
+This is a conditional occupancy prior, not a new Pitman--Yor process.
+
+Run the prespecified finite-population benchmark with:
+
+```bash
+OPENBLAS_NUM_THREADS=1 python examples/association_feasibility.py \
+  --config examples/association_feasibility.json \
+  --output-dir /path/to/study --workers 8
+```
+
+Stages can run separately with `--stage development`, `pilot`, `lock`,
+`confirmation`, or `report`. The pilot only sets confirmation sample sizes;
+fitting uses development scenes. Confirmation requires a hashed lock of source,
+configuration, fitted parameters, pilot records, and allocations. Outputs resume
+at complete regime boundaries and incompatible reuse is rejected. No automatic
+claim of novelty or real tracking performance is made. Use a new output directory
+after any source/configuration change. The seed namespaces do not overlap.
+
+The report uses balanced regime averages, paired normal-approximation 95%
+intervals, and an explicit practical-effect threshold. Per-scene JSON retains
+seeds, truth for scoring, exposure, scores, runtime, and oversized-scene rejection
+counts. Empty windows remain in the experiment and have zero association loss.
+The oracle integrates undetected members of the known finite generating
+population, but scores only detected identities. It is a reference, not a fitted
+competitor. Model tuning is regime-specific, so this study cannot demonstrate
+cross-regime generalization.
+
 ## Development
 
 ```bash

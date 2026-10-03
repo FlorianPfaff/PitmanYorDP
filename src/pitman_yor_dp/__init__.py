@@ -8,6 +8,16 @@ from .adapters import (
     records_from_csv,
     records_from_rows,
 )
+from .association import (
+    AssociationModel,
+    AssociationPosterior,
+    MotionModel,
+    ObservationWindow,
+    SurvivalModel,
+    infer_associations,
+    score_associations,
+)
+from .association_scenes import SceneConfig, SimulatedScene, simulate_association_scene
 from .benchmark_reports import (
     COUNT_TYPES,
     SequenceBenchmarkReport,
@@ -67,6 +77,16 @@ from .synthetic import (
 )
 
 __all__ = [
+    "AssociationModel",
+    "AssociationPosterior",
+    "MotionModel",
+    "ObservationWindow",
+    "SurvivalModel",
+    "SceneConfig",
+    "SimulatedScene",
+    "infer_associations",
+    "score_associations",
+    "simulate_association_scene",
     "CountModelComparison",
     "CountModelFit",
     "CountSeriesBundle",
