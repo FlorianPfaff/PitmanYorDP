@@ -1,8 +1,8 @@
 """Simple empirical model-selection utilities for tracking count series.
 
 These utilities are deliberately modest. They are meant to answer the first
-screening question before tracker integration: are observed tracking counts
-Poisson-like, merely overdispersed, or plausibly heavy-tailed?
+screening question before tracker integration: how dispersed are the observed
+counts? Marginal count summaries do not select a DP or Pitman--Yor partition prior.
 """
 
 from __future__ import annotations
@@ -14,16 +14,16 @@ from typing import Mapping
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .diagnostics import CountSeriesDiagnostics, count_series_diagnostics, hill_tail_index
+from .diagnostics import CountSeriesDiagnostics, count_series_diagnostics
 
 
 @dataclass(frozen=True)
 class CountModelFit:
-    """Maximum-likelihood-style fit summary for one count model."""
+    """Fit summary; AIC is unavailable for non-likelihood estimators."""
 
     model_name: str
     log_likelihood: float
-    aic: float
+    aic: float | None
     num_parameters: int
     parameters: Mapping[str, float]
     feasible: bool = True
@@ -42,10 +42,10 @@ class CountModelComparison:
 
     @property
     def best_fit(self) -> CountModelFit | None:
-        """Return the feasible fit with the smallest AIC, if any."""
+        """Rank only when every feasible candidate has a valid AIC."""
 
         feasible = [fit for fit in self.fits if fit.feasible]
-        if not feasible:
+        if len(feasible) < 2 or any(fit.aic is None for fit in feasible):
             return None
         return min(feasible, key=lambda fit: fit.aic)
 
@@ -108,13 +108,14 @@ def fit_negative_binomial_count_model(samples: ArrayLike) -> CountModelFit:
     return CountModelFit(
         model_name="negative_binomial",
         log_likelihood=log_likelihood,
-        aic=_aic(log_likelihood, num_parameters=2),
+        aic=None,
         num_parameters=2,
         parameters={
             "mean": mean,
             "size": float(size),
             "success_probability": float(success_probability),
         },
+        note="method-of-moments estimate; AIC ranking requires a maximum-likelihood fit.",
     )
 
 
@@ -126,46 +127,43 @@ def compare_count_models(
     heavy_tail_top_k: int | None = None,
     heavy_tail_index_threshold: float = 3.0,
 ) -> CountModelComparison:
-    """Compare simple count baselines and return a prior-family recommendation.
+    """Suggest count baselines for investigation, not a fitted winning family.
 
-    The recommendation is heuristic and should be treated as a screening result:
-
-    - low dispersion: ordinary Poisson/RFS cardinality may be enough;
-    - overdispersion without strong tail evidence: gamma-Poisson or negative
-      binomial is the first baseline;
-    - small Hill tail index: Pitman--Yor/stable-process motivation remains
-      plausible and deserves a tracker-level test.
+    Dispersion thresholds are descriptive heuristics, not significance tests.
+    The legacy heavy-tail arguments are accepted for compatibility but never
+    select a partition prior. Lifetimes need a separate observation/censoring model.
     """
 
     counts = _as_nonnegative_integer_array(samples, name="samples")
     if counts.size == 0:
         raise ValueError("samples must not be empty.")
+    if not isfinite(dispersion_threshold) or dispersion_threshold <= 1.0:
+        raise ValueError("dispersion_threshold must be finite and greater than one.")
     diagnostics = count_series_diagnostics(counts)
     fits = [fit_poisson_count_model(counts), fit_negative_binomial_count_model(counts)]
 
-    tail_index: float | None = None
-    positive_counts = counts[counts > 0]
-    if positive_counts.size >= 4 and int(np.max(positive_counts)) > int(np.min(positive_counts)):
-        try:
-            tail_index = hill_tail_index(positive_counts, top_k=heavy_tail_top_k).tail_index
-        except ValueError:
-            tail_index = None
-
-    if tail_index is not None and tail_index <= float(heavy_tail_index_threshold) and diagnostics.maximum >= 4:
-        recommended_family = "pitman_yor_or_stable_process"
-        reason = f"exploratory tail index {tail_index:.3g} is below threshold {heavy_tail_index_threshold:.3g}; verify with survival plots and clutter controls."
-    elif isfinite(diagnostics.dispersion_index) and diagnostics.dispersion_index > float(dispersion_threshold):
+    if count_name == "L_k" or "lifetime" in count_name.lower():
+        fits = []
+        recommended_family = "boundary_aware_survival_analysis"
+        reason = "Observed identity spans require boundary and gap metadata before fitting lifetime models."
+    elif counts.size < 2 or not isfinite(diagnostics.dispersion_index):
+        fits = []
+        recommended_family = "insufficient_variation"
+        reason = "Insufficient samples or a zero mean prevents a dispersion-based comparison."
+    elif diagnostics.dispersion_index < 1.0 / dispersion_threshold:
+        recommended_family = "underdispersed_count_baselines"
+        reason = "Underdispersion motivates binomial/Poisson-binomial or other underdispersed baselines; these are not fitted here."
+    elif diagnostics.dispersion_index > dispersion_threshold:
         recommended_family = "gamma_poisson_or_negative_binomial"
-        reason = f"dispersion index {diagnostics.dispersion_index:.3g} exceeds threshold {dispersion_threshold:.3g}, but heavy-tail evidence is weak or unavailable."
+        reason = "Overdispersion motivates a negative-binomial baseline (equivalently gamma-Poisson); tail behavior has not been tested."
     else:
-        recommended_family = "poisson_or_dirichlet_process_baseline"
-        reason = f"dispersion index {diagnostics.dispersion_index:.3g} does not exceed threshold {dispersion_threshold:.3g}."
+        recommended_family = "poisson_count_baseline"
+        reason = "Dispersion is near one under the exploratory thresholds; this does not establish Poisson goodness-of-fit."
 
-    sorted_fits = tuple(sorted(fits, key=lambda fit: (not fit.feasible, fit.aic)))
     return CountModelComparison(
         count_name=str(count_name),
         diagnostics=diagnostics,
-        fits=sorted_fits,
+        fits=tuple(fits),
         recommended_family=recommended_family,
         recommendation_reason=reason,
     )
@@ -180,13 +178,16 @@ def comparison_to_dict(comparison: CountModelComparison) -> dict[str, object]:
         "num_samples": comparison.diagnostics.num_samples,
         "mean": comparison.diagnostics.mean,
         "variance": comparison.diagnostics.variance,
-        "dispersion_index": comparison.diagnostics.dispersion_index,
+        "dispersion_index": comparison.diagnostics.dispersion_index if isfinite(comparison.diagnostics.dispersion_index) else None,
         "zero_fraction": comparison.diagnostics.zero_fraction,
         "maximum": comparison.diagnostics.maximum,
         "best_model": None if best_fit is None else best_fit.model_name,
         "best_model_aic": None if best_fit is None else best_fit.aic,
         "recommended_family": comparison.recommended_family,
         "recommendation_reason": comparison.recommendation_reason,
+        "tail_evidence": "not_tested",
+        "recommendation_kind": "exploratory_baseline",
+        "ranking_note": "AIC assumes independent samples and is withheld when a feasible fit is not maximum-likelihood.",
     }
 
 

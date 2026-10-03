@@ -6,7 +6,26 @@ The goal is to keep reusable implementation code here, while notes, figures, and
 
 ## Scope
 
-This repository provides a small installable Python package, `pitman_yor_dp`, for diagnostics and prior-predictive work around tracking counts. It is deliberately not a full multitarget tracker. The intended use is to decide which count in the tracking generative model plausibly needs a heavy-tailed prior before embedding the resulting prior terms in a tracker-specific likelihood, survival, birth, missed-detection, and clutter model.
+Marginal birth, annotated-population, and observed-span statistics do not select a DP or PYP partition prior. Recommendations identify exploratory count baselines only. Negative-binomial fits currently use moments, so their AIC and mixed-estimator rankings are unavailable (`best_model` is null). Lifetimes require a separate boundary-aware analysis; a DP is not a Poisson count model.
+
+For audited MOT17 ground truth, use:
+
+```bash
+python examples/batch_motchallenge_diagnostics.py MOT17Labels/train \
+  --mot17-ground-truth --json-output report.json --output-dir reports/mot17 --quiet
+```
+
+This mode requires `seqinfo.ini`, keeps marked pedestrians at all visibility levels, preserves complete clip exposure, checks and deduplicates detector variants, and records hashes and identity boundary flags. Raw `B_t` includes the initial frame; comparisons exclude it. `L_k` is an observed span, not a complete physical lifetime. Generic input remains supported without the flag, but clip boundaries and frame rates may be unknown.
+
+An exact structural diagnostic is available for windows of at most nine observations:
+
+```bash
+python examples/partition_structure_check.py --output partition-check.json
+```
+
+The `partitions` module conditions the full EPPF on valid point-target partitions. It verifies a two-frame equivalence after matching the entire detected-identity-count distribution and demonstrates a remaining three-frame occupancy effect. These are prior calculations, not tracker performance or live-cardinality inference.
+
+This repository provides a small installable Python package, `pitman_yor_dp`, for descriptive diagnostics and partition-prior checks. It is deliberately not a full multitarget tracker. Tracker integration requires a normalized model of observations, survival, births, missed detections, and clutter.
 
 The current code separates seven concerns:
 
@@ -97,7 +116,7 @@ run:
 python examples/count_diagnostics_from_tracks.py path/to/tracks.csv
 ```
 
-The script emits JSON containing live counts, birth counts, lifetimes, Poisson/negative-binomial fits, and a first-pass prior-family recommendation. Use benchmark-specific scripts only to convert annotations into this minimal table schema.
+The script emits JSON containing observed counts, first appearances, identity spans, and exploratory baseline suggestions. Use the audited batch mode for MOT17 metadata and boundary handling.
 
 ## Example: MOTChallenge count diagnostics
 

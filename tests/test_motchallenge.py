@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from pitman_yor_dp import (
     count_series_from_motchallenge_file,
     records_from_motchallenge_rows,
@@ -39,3 +41,23 @@ def test_count_series_from_motchallenge_file(tmp_path: Path):
     assert bundle.live_counts == (2, 1, 0, 1)
     assert bundle.birth_counts == (2, 0, 0, 1)
     assert bundle.lifetimes == (1, 1, 2)
+
+
+def test_mot17_ground_truth_uses_mark_and_class_and_preserves_visibility():
+    rows = [
+        [1, 1, 0, 0, 10, 10, 1, 1, 0.0],
+        [1, 2, 0, 0, 10, 10, 1, 7, 1.0],
+        [1, 3, 0, 0, 10, 10, 0, 1, 1.0],
+    ]
+    records = records_from_motchallenge_rows(rows, mot17_ground_truth=True)
+    assert [record.track_id for record in records] == [1]
+    assert records[0].is_ground_truth
+    assert records[0].metadata["visibility"] == 0.0
+    assert records[0].metadata["class_id"] == 1
+    assert "world_x" not in records[0].metadata
+
+
+@pytest.mark.parametrize("frame", ["1.5", "nan", "inf"])
+def test_invalid_frame_is_not_truncated(frame):
+    with pytest.raises(ValueError):
+        records_from_motchallenge_rows([[frame, "1"]])

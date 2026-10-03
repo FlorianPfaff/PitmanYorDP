@@ -1,9 +1,9 @@
-"""Diagnostics for deciding which tracking count should be heavy-tailed.
+"""Exploratory summaries of tracking count series.
 
 The functions here are intentionally data-facing rather than tracker-specific.
 They help summarize live-cardinality, birth-count, clutter-count, and track-
-lifetime samples before choosing between DP, Pitman--Yor, gamma-Poisson, or
-beta-Bernoulli style priors.
+lifetime samples. These statistics alone cannot select a partition prior or
+establish a heavy tail.
 """
 
 from __future__ import annotations
