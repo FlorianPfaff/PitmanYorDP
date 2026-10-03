@@ -1,0 +1,12 @@
+{
+  "master_seed": 20261003,
+  "development_scenes": 200,
+  "pilot_scenes": 100,
+  "minimum_confirmation": 200,
+  "maximum_confirmation": 5000,
+  "negative_control_scenes": 40,
+  "ci_half_width": 0.01,
+  "minimum_effect": 0.02,
+  "count_harm_margin": 0.02,
+  "novelty_status": "unestablished"
+}
